@@ -1,2 +1,0 @@
-# arcadeworld
-Retro gaming website
