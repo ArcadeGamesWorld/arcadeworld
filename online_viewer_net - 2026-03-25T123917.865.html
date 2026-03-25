@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro World</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'retro': ['"Press Start 2P"', 'cursive'],
+                        'sans': ['Outfit', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a; /* Slate 900 */
+            color: #f8fafc; /* Slate 50 */
+        }
+
+        .game-card {
+            transition: all 0.2s ease;
+            background: #1e293b; /* Slate 800 */
+            border: 2px solid #334155; /* Slate 700 */
+        }
+
+        .game-card:hover {
+            transform: translateY(-4px);
+            border-color: #3b82f6; /* Blue 500 */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+        }
+
+        .game-card:hover .play-overlay {
+            opacity: 1;
+        }
+
+        .play-overlay {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(2px);
+        }
+
+        /* Custom Fullscreen Classes */
+        .css-fullscreen {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw !important;
+            z-index: 9999 !important;
+            background-color: #0f172a !important;
+            margin: 0 !important;
+            padding: 1rem !important;
+            box-sizing: border-box !important;
+        }
+        
+        .css-fullscreen #game-container {
+            height: auto !important;
+            flex-grow: 1 !important;
+            min-height: 0 !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header id="site-header" class="text-center py-10 relative">
+        <button onclick="openChangelog()" class="absolute top-4 right-4 sm:top-6 sm:right-6 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded border border-slate-600 transition-colors flex items-center shadow-lg">
+            <i class="fas fa-clipboard-list mr-2"></i> Changelog
+        </button>
+        <h1 class="font-retro text-3xl md:text-5xl text-white mb-4 tracking-wider">
+            RETRO WORLD
+        </h1>
+        <p class="font-sans text-slate-400 text-lg md:text-xl font-semibold tracking-widest">
+            <i class="fas fa-gamepad mr-2 text-blue-500"></i> PLAY CLASSIC GAMES <i class="fas fa-gamepad ml-2 text-blue-500"></i>
+        </p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 pb-12 flex-grow">
+        
+<!-- Controls: Search & Filter -->
+        <div class="max-w-2xl mx-auto mb-8 flex flex-col sm:flex-row gap-4">
+            <div class="relative flex-grow">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-slate-500"></i>
+                </div>
+                <input type="text" id="search-input" class="block w-full pl-10 pr-3 py-3 border border-slate-600 rounded-lg leading-5 bg-slate-800 text-slate-300 placeholder-slate-500 focus:outline-none focus:bg-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-sm transition-colors" placeholder="Search games...">
+            </div>
+            <select id="platform-filter" class="px-4 py-3 border border-slate-600 rounded-lg bg-slate-800 text-slate-300 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer outline-none">
+                <option value="ALL">All Platforms</option>
+                <option value="ARCADE">Arcade</option>
+                <option value="ATARI 2600">Atari 2600</option>
+                <option value="JAGUAR">Atari Jaguar</option>
+                <option value="BROWSER">Browser</option>
+                <option value="GAMEBOY">Gameboy/Gameboy Advance</option>
+                <option value="N64">Nintendo 64</option>
+                <option value="NDS">Nintendo DS</option>
+                <option value="NES">NES</option>
+                <option value="PLAYSTATION">Playstation</option>
+                <option value="SEGA">SEGA Genesis</option>
+                <option value="SNES">SNES</option>
+            </select>
+        </div>
+
+        <!-- Game Library Grid -->
+        <div id="game-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            <!-- Game Cards will be injected here by JavaScript -->
+        </div>
+
+        <!-- Game Player View (Hidden by default) -->
+        <div id="player-view" class="hidden flex-col w-full max-w-5xl mx-auto mt-4">
+            <div class="w-full flex flex-col sm:flex-row justify-between items-center mb-4 bg-slate-800 border-b border-slate-600 pb-4 px-2 sm:px-0">
+                <h2 id="now-playing-title" class="font-retro text-lg sm:text-xl text-blue-400 truncate mb-4 sm:mb-0">Now Playing</h2>
+                <div class="flex gap-2 sm:gap-4 w-full sm:w-auto justify-center">
+                    <button onclick="toggleFullscreen()" class="px-4 sm:px-6 py-2 sm:py-3 font-bold text-xs text-white bg-slate-700 hover:bg-slate-600 border border-slate-500 rounded transition-colors flex items-center">
+                        <i id="fs-icon" class="fas fa-expand mr-2"></i> <span id="fs-text">FULLSCREEN</span>
+                    </button>
+                    <button onclick="closeGame()" class="px-4 sm:px-6 py-2 sm:py-3 font-bold text-xs text-white bg-red-600 hover:bg-red-500 border border-red-700 rounded transition-colors flex items-center">
+                        <i class="fas fa-arrow-left mr-2"></i> <span>BACK TO MENU</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="game-container" class="w-full h-[75vh] min-h-[500px] border-2 border-slate-600 rounded-lg overflow-hidden shadow-2xl bg-black relative flex flex-col">
+                <div id="loading-spinner" class="absolute inset-0 flex flex-col items-center justify-center text-blue-500 z-0 bg-slate-900">
+                    <i class="fas fa-circle-notch fa-spin text-4xl mb-4"></i>
+                    <p class="font-retro text-xs text-slate-300">INSERT COIN...</p>
+                </div>
+                <iframe 
+                    id="game-iframe" 
+                    class="w-full h-full relative z-10 flex-grow" 
+                    frameborder="0" 
+                    allow="autoplay; fullscreen"
+                    allowfullscreen
+                    onload="document.getElementById('loading-spinner').style.display='none';"
+                ></iframe>
+            </div>
+            
+            <div class="mt-6 bg-slate-800 p-4 rounded-lg border border-slate-700">
+                <p class="text-slate-300 font-sans text-sm text-center">
+                    <i class="fas fa-keyboard mr-2 text-blue-400"></i>
+                    <strong class="text-white">CONTROLS:</strong> 
+                    <span id="game-controls-text">Click inside the game window to enable controls.</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Changelog Modal -->
+        <div id="changelog-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
+            <div class="bg-slate-800 border border-slate-600 rounded-lg max-w-lg w-full p-6 shadow-2xl relative flex flex-col max-h-[80vh]">
+                <button onclick="closeChangelog()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+                <h2 class="font-retro text-xl text-blue-400 mb-4 border-b border-slate-700 pb-2">CHANGELOG</h2>
+                <div class="space-y-4 text-sm text-slate-300 overflow-y-auto pr-2 custom-scrollbar flex-grow">
+                    <div>
+                        <h3 class="font-bold text-white">v2.0</h3>
+                        <ul class="list-disc pl-5 mt-1 text-slate-400">
+                            <li>Added 45+ new games!</li>
+                            <li>Added many new Playstation classics, including Croc: Legend of the Gobbos, Gex, Tomba, and Final Fantasy VII</li>
+                            <li>Added 10 games for the Atari 2600! Relive the earliest era of gaming with Adventure, Breakout, Combat, Crystal Castles, Defender, Joust, Kaboom, Pitfall, Yars Revenge, and even ET, a game so bad it nearly killed gaming!</li>
+                            <li>Added new games for SEGA Genesis, NES, SNES, N64, Gameboy, Nintendo DS, and Arcades</li>
+                            <li>Added filtering games by system.</li>
+                            <li>Added a way to track what games are played on the website and when.</li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer id="site-footer" class="text-center py-6 border-t border-slate-800 mt-auto bg-slate-900">
+        <p class="font-sans text-slate-500 text-sm">
+            Powered by <a href="https://archive.org" class="text-blue-400 hover:text-blue-300 transition">Internet Archive</a> and <a href="https://playclassic.games" class="text-blue-400 hover:text-blue-300 transition">PlayClassic.games</a>
+        </p>
+    </footer>
+
+    <!-- Application Logic -->
+    <script>
+        // System Controls Database
+        const systemControls = {
+            'NES': 'Arrow Keys to move. Z and X for A/B. Enter for Start. Shift for Select.',
+            'GAMEBOY': 'Arrow Keys to move. Z, X, A, S for A, B, X, Y buttons. Enter for Start. Shift for Select.',
+            'SNES': 'Arrow Keys to move. Z, X, A, S for A, B, X, Y buttons. Enter for Start. Shift for Select.',
+            'N64': 'T, G, F, H or Arrow Keys to move. Z, X, C, V for C-buttons. A and S for A/B buttons. Enter for Start.',
+            'NDS': 'Arrow Keys to move. Z, X, C, V for C-buttons. A and S for A/B buttons. Enter for Start.',
+            'SEGA': 'Arrow Keys to move. A, S, D for A, B, C buttons. Enter for Start.',
+            'ARCADE': 'Arrow Keys to move. Z, X, A, S for actions. Press v to Insert Coin, Enter for Player 1 Start.',
+            'PLAYSTATION': 'Arrow Keys to move. Z, X, C, V, A, S for buttons. Enter for Player 1 Start.',
+            'JAGUAR': 'Arrow Keys to move. Z, X, C, V, A, S for buttons. Enter for Player 1 Start.',
+            'BROWSER': 'Controls provided in game',
+            'ATARI 2600': 'Controls provided on the right side of the screen'
+        };
+
+        // Game Database
+        const games = [
+            {
+                id: 'smb',
+                title: 'Super Mario Bros',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/super-mario-bros',
+                img: 'https://upload.wikimedia.org/wikipedia/en/0/03/Super_Mario_Bros._box.png'
+            },
+            {
+                id: 'platinum',
+                title: 'Pokemon Platinum',
+                system: 'NDS',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/pokemon-platinum-version',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_pqgtkzaumB2eQrM-6RqFOQXH98d_jH3P0w&s'
+            },
+            {
+                id: 'aceattorney',
+                title: 'Ace Attorney',
+                system: 'NDS',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/phoenix-wright-ace-attorney',
+                img: 'https://upload.wikimedia.org/wikipedia/en/7/73/Phoenix_Wright_-_Ace_Attorney_Coverart.png'
+            },
+            {
+                id: 'plantsvszombies',
+                title: 'Plants VS Zombies',
+                system: 'NDS',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/plants-vs-zombies',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-rBd--THY3nPflBNtBSipCwMDCKAzcjxYug&s'
+            },
+            {
+                id: 'metroidprime',
+                title: 'Metroid Prime: Hunters',
+                system: 'NDS',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/metroid-prime-hunters',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQNETjA272YeKhYFbwEaoMz5mFRqlJ19mzuOQ&s'
+            },
+            {
+                id: 'animalcrossingwild',
+                title: 'Animal Crossing: Wild World',
+                system: 'NDS',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/animal-crossing-wild-world',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzCgvfLXLAn9V9upXe8yTLJlEueUyfFicYZg&s'
+            },
+            {
+                id: 'codblackops',
+                title: 'Call Of Duty: Black Ops',
+                system: 'NDS',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/call-of-duty-black-ops',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxgpnraE5DuPUGNLbzAkk0qdS3pEPS0_TsEg&s'
+            },
+            {
+                id: 'mariokartds',
+                title: 'Mario Kart DS',
+                system: 'NDS',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/mario-kart-ds',
+                img: 'https://upload.wikimedia.org/wikipedia/en/8/86/Mario_Kart_DS_cover.jpg'
+            },
+            {
+                id: 'edgeoftime',
+                title: 'Spider-Man: Edge of Time',
+                system: 'NDS',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/spider-man-edge-of-time-nds',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTNfRX0zll3riEUE6CFqhxOo2c8LhYikqVqog&s'
+            },
+            {
+                id: 'soniccolor',
+                title: 'Sonic Colors',
+                system: 'NDS',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/sonic-colors-nds',
+                img: 'https://m.media-amazon.com/images/I/91i3Pm4eNeL._AC_UF1000,1000_QL80_.jpg'
+            },
+            {
+                id: 'sims3',
+                title: 'The Sims 3',
+                system: 'NDS',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/the-sims-3-nds',
+                img: 'https://m.media-amazon.com/images/I/7148NgBPcfL._AC_UF1000,1000_QL80_.jpg'
+            },
+            {
+                id: 'kirbyssultra',
+                title: 'Kirby Super Star Ultra',
+                system: 'NDS',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/kirby-super-star-ultra',
+                img: 'https://m.media-amazon.com/images/I/61dyjHc6kzL.jpg'
+            },
+            {
+                id: 'monopolyds',
+                title: 'Monopoly DS',
+                system: 'NDS',
+                systemColor: 'bg-red-700',
+                url: 'https://emulatorgamer.com/games/monopoly-ds',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJI4rmo_2rEHNpS9I0wjYZC4BIp7j4rQC2VQ&s'
+            },
+            {
+                id: 'tyson',
+                title: 'Mike Tysons Punch-Out',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/mike-tysons-punch-out',
+                img: 'https://m.media-amazon.com/images/M/MV5BNDQ3M2I3YTYtNWZiMi00YjQ0LTgyNmUtYjc1ZTk3YmNlMjAzXkEyXkFqcGc@._V1_.jpg'
+            },
+            {
+                id: 'metroid',
+                title: 'Metroid',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/metroid',
+                img: 'https://upload.wikimedia.org/wikipedia/en/5/5d/Metroid_boxart.jpg'
+            },
+            {
+                id: 'iceclimb',
+                title: 'Ice Climber',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/ice-climber',
+                img: 'https://upload.wikimedia.org/wikipedia/en/d/df/IceClimberboxartnes.jpg'
+            },
+            {
+                id: 'duckhunt',
+                title: 'Duck Hunt',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/duck-hunt',
+                img: 'https://m.media-amazon.com/images/M/MV5BNmUwODU3YzItNzNiMC00ZDRiLTkxN2QtNTFmNzczNDAwZjdiXkEyXkFqcGc@._V1_.jpg'
+            },
+            {
+                id: 'contra',
+                title: 'Contra',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/contra',
+                img: 'https://upload.wikimedia.org/wikipedia/en/6/65/Contra_cover.jpg'
+            },
+            {
+                id: 'pokemonred',
+                title: 'Pokemon Red',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/id/games/pokemon-red',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQf-eAgqWhoE5-6DXfCJrw9H3qLNKmYFy_6A&s'
+            },
+            {
+                id: 'needmostwanted',
+                title: 'Need For Speed: Most Wanted',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/need-for-speed-most-wanted-gba',
+                img: 'https://m.media-amazon.com/images/I/71-WJMXvaLL._AC_UF1000,1000_QL80_.jpg'
+            },
+            {
+                id: 'spidermanny',
+                title: 'Spider-Man: Battle for New York',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/spider-man-battle-for-new-york',
+                img: 'https://upload.wikimedia.org/wikipedia/en/2/24/SpiderMan_DS.JPG'
+            },
+            {
+                id: 'pokemonemerald',
+                title: 'Pokemon Emerald',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/pokemon-emerald',
+                img: 'https://upload.wikimedia.org/wikipedia/en/f/f7/PokemonEmeraldBox.jpg'
+            },
+            {
+                id: 'pokemonleafgreen',
+                title: 'Pokemon LeafGreen',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/pokemon-leafgreen',
+                img: 'https://assets-prd.ignimgs.com/2022/01/31/pokemon-leafgreen-button-crop-v3-1643617153926.jpg'
+            },
+            {
+                id: 'kirbydream',
+                title: 'Kirbys Dream Land',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/kirbys-dream-land',
+                img: 'https://m.media-amazon.com/images/I/61BlWIBmHCL._AC_UF1000,1000_QL80_.jpg'
+            },
+            {
+                id: 'wariowaremega',
+                title: 'WarioWare: Mega Microgames',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/warioware-mega-microgames',
+                img: 'https://m.media-amazon.com/images/M/MV5BYjY3MWQ1MzMtNjgzMi00ZjM3LWE1OTgtMjRlMmI3MzliMjNmXkEyXkFqcGc@._V1_.jpg'
+            },
+            {
+                id: 'fifa07',
+                title: 'FIFA 07',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/fifa-soccer-07-gba',
+                img: 'https://m.media-amazon.com/images/I/716oo+8R2qL.jpg'
+            },
+            {
+                id: 'harvestmoonfriends',
+                title: 'Harvest Moon: Friends of Mineral Town',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/harvest-moon-friends-of-mineral-town',
+                img: 'https://upload.wikimedia.org/wikipedia/en/7/7a/Harvest_Moon-_FoMT.jpg'
+            },
+            {
+                id: 'marioluigisupersaga',
+                title: 'Mario & Luigi Superstar Saga',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/mario-luigi-superstar-saga-gba',
+                img: 'https://upload.wikimedia.org/wikipedia/en/6/63/MarioAndLuigiSuperstarSagaGBACoverArtUS.jpg'
+            },
+            {
+                id: 'yoshi',
+                title: 'Yoshi',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/yoshi-gb',
+                img: 'https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/Yoshi_game_cover.png/250px-Yoshi_game_cover.png'
+            },
+            {
+                id: 'sapphire',
+                title: 'Pokemon Sapphire',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/pokemon-sapphire',
+                img: 'https://m.media-amazon.com/images/I/61p+1+PYSML._AC_UF1000,1000_QL80_.jpg'
+            },
+            {
+                id: 'amazingmirror',
+                title: 'Kirby & the Amazing Mirror',
+                system: 'GAMEBOY',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/kirby-amazing-mirror',
+                img: 'https://m.media-amazon.com/images/I/71CUMPFnXdL.jpg'
+            },
+            {
+                id: 'smw',
+                title: 'Super Mario World',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/super-mario-world',
+                img: 'https://upload.wikimedia.org/wikipedia/en/3/32/Super_Mario_World_Coverart.png'
+            },
+            {
+                id: 'mariomissing',
+                title: 'Mario Is Missing',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/mario-is-missing',
+                img: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f7/Mario_Is_Missing_cover.jpg/250px-Mario_Is_Missing_cover.jpg'
+            },
+            {
+                id: 'simpsonsnightmare',
+                title: 'The Simpsons: Barts Nightmare',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/simpsons-barts-nightmare-snes',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQTdv_Lyz6ldwmjzU60TKWmCJFls1-A2q1z4w&s'
+            },
+            {
+                id: 'starfox',
+                title: 'Star Fox',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/star-fox-snes',
+                img: 'https://upload.wikimedia.org/wikipedia/en/5/52/Star_Fox_SNES.jpg'
+            },
+            {
+                id: 'diddy',
+                title: 'Donkey Kong Country: Diddy Kong Quest',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/donkey-kong-country-2-diddys-kong-quest',
+                img: 'https://m.media-amazon.com/images/I/91sMbat-QnL.jpg'
+            },
+            {
+                id: 'animaniacs',
+                title: 'Animaniacs',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/animaniacs',
+                img: 'https://upload.wikimedia.org/wikipedia/en/b/bf/Animaniacs_SNES_cover_art.jpg'
+            },
+            {
+                id: 'lionking',
+                title: 'The Lion King',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/the-lion-king',
+                img: 'https://www.lukiegames.com/assets/images/SNES/snes_lion_king_p_khhgk9.jpg'
+            },
+            {
+                id: 'streetfight',
+                title: 'Street Fighter II',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/street-fighter-ii-champion-edition',
+                img: 'https://upload.wikimedia.org/wikipedia/en/f/f5/Street_Fighter_II_Dash_%28flyer%29.png'
+            },
+            {
+                id: 'superpac',
+                title: 'Super PAC-MAN',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/super-pac-man',
+                img: 'https://upload.wikimedia.org/wikipedia/en/e/e5/Super_Pac-Man_flyer.png'
+            },
+            {
+                id: 'tmntintime',
+                title: 'Teenage Mutant NInja Turtles: Turtles in Time',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/teenage-mutant-ninja-turtles-turtles-in-time',
+                img: 'https://upload.wikimedia.org/wikipedia/en/6/6d/Teenage_Mutant_Ninja_Turtles-_Turtles_in_Time_%28flyer%29.jpg'
+            },
+            {
+                id: 'bubble',
+                title: 'Bubble Bobble',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/bubble-bobble',
+                img: 'https://m.media-amazon.com/images/M/MV5BNDk1NzI2YmEtZGJiNi00Mzc5LTkxMzktMWI4MmQ2YTZmNGQzXkEyXkFqcGc@._V1_QL75_UX190_CR0,2,190,281_.jpg'
+            },
+            {
+                id: 'simpsons',
+                title: 'The Simpsons',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/the-simpsons',
+                img: 'https://static.wikia.nocookie.net/simpsons/images/1/15/TSAG_DOS_front.jpg/revision/latest/thumbnail/width/360/height/360?cb=20100720035027'
+            },
+            {
+                id: '1942',
+                title: '1942',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/1942',
+                img: 'https://m.media-amazon.com/images/M/MV5BMDE2YzRlOTAtZTZhOS00OTYxLTkyMzAtYmU5OWFmODhkZDZiXkEyXkFqcGc@._V1_.jpg'
+            },
+            {
+                id: 'xevious',
+                title: 'Xevious',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/xevious',
+                img: 'https://upload.wikimedia.org/wikipedia/en/thumb/8/8c/Xevious_Poster.png/250px-Xevious_Poster.png'
+            },
+            {
+                id: 'dkjr',
+                title: 'Donkey Kong Junior',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/donkey-kong-junior-arcade',
+                img: 'https://upload.wikimedia.org/wikipedia/en/2/2c/Donkey_Kong_Jr._arcade_promotional_flier.jpg'
+            },
+            {
+                id: 'millipede',
+                title: 'Millipede',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/millipede-arcade',
+                img: 'https://upload.wikimedia.org/wikipedia/en/a/af/Millipede_Poster.png'
+            },
+            {
+                id: 'meatboy',
+                title: 'Meat Boy',
+                system: 'BROWSER',
+                systemColor: 'bg-orange-600',
+                url: 'https://kbhgames.com/game/super-meat-boy',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTHj5CATe21o6aiBnTQxO2LUJx8oPW3VYWAxQ&s'
+            },
+            {
+                id: 'dk',
+                title: 'Donkey Kong',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/donkey-kong-arcade',
+                img: 'https://upload.wikimedia.org/wikipedia/en/1/14/Donkey_Kong_flier.jpg'
+            },
+            {
+                id: 'cadillac',
+                title: 'Cadillacs and Dinosaurs',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/dino',
+                img: 'https://flyers.arcade-museum.com/videogame-flyers/0/cadillacs-and-dinosaurs-00164-01.jpg'
+            },
+            {
+                id: 'spaceinvade',
+                title: 'Space Invaders',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/space-invaders',
+                img: 'https://upload.wikimedia.org/wikipedia/en/0/0f/Space_Invaders_flyer%2C_1978.jpg'
+            },
+            {
+                id: 'burgertime',
+                title: 'BurgerTime',
+                system: 'NES',
+                systemColor: 'bg-red-600',
+                url: 'https://classicgamezone.com/games/burgertime-nes',
+                img: 'https://m.media-amazon.com/images/I/61X+RnEAPKL._AC_UF1000,1000_QL80_.jpg'
+            },
+            {
+                id: 'smb2',
+                title: 'Super Mario Bros 2',
+                system: 'NES',
+                systemColor: 'bg-red-600',
+                url: 'https://classicgamezone.com/games/super-mario-bros-2',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS4TF1_1x43in4oESVBG6-1lbpS9zFnh03eNA&s'
+            },
+            {
+                id: 'dd',
+                title: 'Double Dragon',
+                system: 'NES',
+                systemColor: 'bg-red-600',
+                url: 'https://classicgamezone.com/games/double-dragon',
+                img: 'https://upload.wikimedia.org/wikipedia/en/e/e6/Ddragon_chirashi.jpg'
+            },
+            {
+                id: 'smb3',
+                title: 'Super Mario Bros 3',
+                system: 'NES',
+                systemColor: 'bg-red-600',
+                url: 'https://classicgamezone.com/games/super-mario-bros-3',
+                img: 'https://m.media-amazon.com/images/I/718yjmcSSNL._AC_UF1000,1000_QL80_.jpg'
+            },
+            {
+                id: 'tmnt2',
+                title: 'Teenage Mutant Ninja Turtles 2',
+                system: 'NES',
+                systemColor: 'bg-red-600',
+                url: 'https://classicgamezone.com/games/teenage-mutant-ninja-turtles-2-the-arcade-game',
+                img: 'https://assets-prd.ignimgs.com/2022/01/28/turtles2-arcade-sq-1643403502785.jpg'
+            },
+            {
+                id: 'smblostlevels',
+                title: 'Super Mario Bros: The Lost Levels',
+                system: 'NES',
+                systemColor: 'bg-red-600',
+                url: 'https://classicgamezone.com/games/super-mario-bros-lost-levels',
+                img: 'https://static.wikia.nocookie.net/mario/images/1/14/The_Lost_Levels_front_cover_%28NA%29.png/revision/latest?cb=20241125145211'
+            },
+            {
+                id: 'drmario',
+                title: 'Dr. Mario',
+                system: 'NES',
+                systemColor: 'bg-red-600',
+                url: 'https://classicgamezone.com/games/dr-mario',
+                img: 'https://upload.wikimedia.org/wikipedia/en/f/f8/Dr._Mario_box_art.jpg'
+            },
+            {
+                id: 'mappy',
+                title: 'Mappy',
+                system: 'NES',
+                systemColor: 'bg-red-600',
+                url: 'https://classicgamezone.com/games/mappy',
+                img: 'https://upload.wikimedia.org/wikipedia/en/a/a1/Mappy_arcadeflyer.png'
+            },
+            {
+                id: 'dkcountry',
+                title: 'Donkey Kong Country',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/donkey-kong-country',
+                img: 'https://upload.wikimedia.org/wikipedia/en/1/1a/Donkey_Kong_Country_SNES_cover.png'
+            },
+            {
+                id: 'megamanx',
+                title: 'Mega Man X',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/mega-man-x',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSnJ5RMxe9AXo4O2WUvGWxTfozOfwOJ1FOloA&s'
+            },
+            {
+                id: 'earthworm',
+                title: 'Earthworm Jim',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/earthworm-jim',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9Xyygoapu2WPAEpnyMRQj7R_zq6jlcfw2qA&s'
+            },
+            {
+                id: 'supermet',
+                title: 'Super Metroid',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/super-metroid',
+                img: 'https://upload.wikimedia.org/wikipedia/en/e/e4/Smetroidbox.jpg'
+            },
+            {
+                id: 'nbahangtime',
+                title: 'NBA Hang Time',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/nba-hang-time-snes',
+                img: 'https://assets-prd.ignimgs.com/2023/03/10/nbahangtime-1678471949264.jpg'
+            },
+            {
+                id: 'itchyandstratchy',
+                title: 'Itchy and Scratchy',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/the-itchy-and-scratchy-game',
+                img: 'https://static.wikia.nocookie.net/simpsons/images/f/ff/Itchy_and_scratchy_game.jpg/revision/latest?cb=20111121224601'
+            },
+            {
+                id: 'sensiblesoccer',
+                title: 'Sensible Soccer',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/sensible-soccer',
+                img: 'https://m.media-amazon.com/images/M/MV5BNGI3ZjhmMmMtZDBkYy00OTAyLTlhNDctMGNjODFlZTE5YWE4XkEyXkFqcGc@._V1_QL75_UY281_CR17,0,190,281_.jpg'
+            },
+            {
+                id: 'starwars',
+                title: 'Super Star Wars',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/super-star-wars',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSyEUs9UYu5dnKqbITbdc4CAn1v5BHp3uydKg&s'
+            },
+            {
+                id: 'rayman',
+                title: 'Rayman',
+                system: 'JAGUAR',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/rayman-jaguar',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcToniQjkxU9PkxYVyq42etoIcLTN_TQ-QNvYw&s'
+            },
+            {
+                id: 'et',
+                title: 'ET: The Extra Terrestrial',
+                system: 'ATARI 2600',
+                systemColor: 'bg-red-700',
+                url: 'https://www.retrogames.cz/play_083-Atari2600.php',
+                img: 'https://upload.wikimedia.org/wikipedia/en/f/f8/Etvideogamecover.jpg'
+            },
+            {
+                id: 'breakout',
+                title: 'Breakout',
+                system: 'ATARI 2600',
+                systemColor: 'bg-red-700',
+                url: 'https://www.retrogames.cz/play_222-Atari2600.php',
+                img: 'https://now.estarland.com/images/products/84/14684/AT2600-Breakout-Atari-large-image.jpg'
+            },
+            {
+                id: 'crystalcastle',
+                title: 'Crystal Castles',
+                system: 'ATARI 2600',
+                systemColor: 'bg-red-700',
+                url: 'https://www.retrogames.cz/play_377-Atari2600.php',
+                img: 'https://m.media-amazon.com/images/I/717us51jjeL.jpg'
+            },
+            {
+                id: 'adventure',
+                title: 'Adventure',
+                system: 'ATARI 2600',
+                systemColor: 'bg-red-700',
+                url: 'https://www.retrogames.cz/play_066-Atari2600.php',
+                img: 'https://upload.wikimedia.org/wikipedia/en/6/60/Adventure_Box_Front.jpg'
+            },
+            {
+                id: 'pitfall',
+                title: 'Pitfall',
+                system: 'ATARI 2600',
+                systemColor: 'bg-red-700',
+                url: 'https://www.retrogames.cz/play_029-Atari2600.php',
+                img: 'https://upload.wikimedia.org/wikipedia/en/0/0c/Pitfall-cover.jpg'
+            },
+            {
+                id: 'combat',
+                title: 'Combat',
+                system: 'ATARI 2600',
+                systemColor: 'bg-red-700',
+                url: 'https://www.retrogames.cz/play_213-Atari2600.php',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ5PZJHckw1ukt0dtc7LgNfs_xztPStLgOx8Q&s'
+            },
+            {
+                id: 'yar',
+                title: 'Yars Revenge',
+                system: 'ATARI 2600',
+                systemColor: 'bg-red-700',
+                url: 'https://www.retrogames.cz/play_099-Atari2600.php',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSgKw3kAWfPTv77tL3l-AQLz5H6kgH6Q9-jPg&s'
+            },
+            {
+                id: 'kaboom',
+                title: 'Kaboom',
+                system: 'ATARI 2600',
+                systemColor: 'bg-red-700',
+                url: 'https://www.retrogames.cz/play_069-Atari2600.php',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQZIHIXd8Is_A6q1OMPdiB-jotXqmm1FBj3JQ&s'
+            },
+            {
+                id: 'joust',
+                title: 'Joust',
+                system: 'ATARI 2600',
+                systemColor: 'bg-red-700',
+                url: 'https://www.retrogames.cz/play_042-Atari2600.php',
+                img: 'https://now.estarland.com/images/products/11/27411/165573.jpg'
+            },
+            {
+                id: 'defender',
+                title: 'Defender',
+                system: 'ATARI 2600',
+                systemColor: 'bg-red-700',
+                url: 'https://www.retrogames.cz/play_178-Atari2600.php',
+                img: 'https://static.wikia.nocookie.net/defender/images/e/ef/Defender2600.jpg/revision/latest?cb=20150414215013'
+            },
+            {
+                id: 'worms',
+                title: 'Worms',
+                system: 'JAGUAR',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/worms-jaguar',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRD81ITQYB361wLB-cfSghaPNC6MKuhPSjuIw&s'
+            },
+            {
+                id: 'wolfenstein',
+                title: 'Wolfenstein 3D',
+                system: 'JAGUAR',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/wolfenstein-3d-jaguar',
+                img: 'https://upload.wikimedia.org/wikipedia/en/0/05/Wolfenstein-3d.jpg'
+            },
+            {
+                id: 'doom',
+                title: 'DOOM',
+                system: 'JAGUAR',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/doom-jaguar',
+                img: 'https://upload.wikimedia.org/wikipedia/en/5/57/Doom_cover_art.jpg'
+            },
+            {
+                id: 'sm64',
+                title: 'Super Mario 64',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/super-mario-64',
+                img: 'https://upload.wikimedia.org/wikipedia/en/thumb/e/e9/Super_Mario_64.png/250px-Super_Mario_64.png'
+            },
+            {
+                id: 'namco',
+                title: 'Namco Museum 64',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/namco-museum-64',
+                img: 'https://assets-prd.ignimgs.com/2022/12/19/namco64-1671474556549.jpg'
+            },
+            {
+                id: '007',
+                title: 'GoldenEye 007',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/goldeneye-007-64',
+                img: 'https://www.lukiegames.com/assets/images/N64/n64_goldeneye_007_p_loywkt.jpg'
+            },
+            {
+                id: 'mariogolf',
+                title: 'Mario Golf',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/mario-golf-n64',
+                img: 'https://upload.wikimedia.org/wikipedia/en/6/66/Mario_Golf_box.jpg'
+            },
+            {
+                id: 'mariotennis',
+                title: 'Mario Tennis',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/mario-tennis-64',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQxdZx0SJ0zU4iK5aOzweOYUwy2sjTKtfoWiQ&s'
+            },
+            {
+                id: 'papermario',
+                title: 'Paper Mario',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/paper-mario-64',
+                img: 'https://upload.wikimedia.org/wikipedia/en/6/61/Papermario.jpg'
+            },
+            {
+                id: 'marioparty',
+                title: 'Mario Party',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/mario-party-64',
+                img: 'https://upload.wikimedia.org/wikipedia/en/c/cd/Marioparty1.jpg'
+            },
+            {
+                id: 'banjokazooie',
+                title: 'Banjo-Kazooie',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/banjo-kazooie',
+                img: 'https://upload.wikimedia.org/wikipedia/en/1/12/Banjo_Kazooie_Cover.png'
+            },
+            {
+                id: 'elmo',
+                title: 'Elmos Letter Adventure',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/elmos-letter-adventure',
+                img: 'https://i.ytimg.com/vi/q9lFy2uUzJE/sddefault.jpg'
+            },
+            {
+                id: 'southpark',
+                title: 'South Park',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/south-park-n64',
+                img: 'https://m.media-amazon.com/images/I/61Dkkhz8hOL._AC_UF1000,1000_QL80_.jpg'
+            },
+            {
+                id: 'spiderman',
+                title: 'Spider-Man',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/spider-man-n64',
+                img: 'https://upload.wikimedia.org/wikipedia/en/8/8d/Spider-Man_2000_game_cover.jpg'
+            },
+            {
+                id: 'starfox64',
+                title: 'Star Fox 64',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/star-fox-64',
+                img: 'https://upload.wikimedia.org/wikipedia/en/6/63/StarFox64_N64_Game_Box.jpg'
+            },
+            {
+                id: 'majorasmask',
+                title: 'Majoras Mask (Zelda)',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/zelda-majoras-mask',
+                img: 'https://upload.wikimedia.org/wikipedia/en/6/60/The_Legend_of_Zelda_-_Majora%27s_Mask_Box_Art.jpg'
+            },
+            {
+                id: 'allstarbaseball',
+                title: 'All-Star Baseball 2000',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/all-star-baseball-2000',
+                img: 'https://upload.wikimedia.org/wikipedia/en/c/ca/All_Star_Baseball_2000.jpg'
+            },
+            {
+                id: 'pokemonstadium',
+                title: 'Pokemon Stadium',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/pokemon-stadium',
+                img: 'https://upload.wikimedia.org/wikipedia/en/7/70/Pokemonstadiumbox.jpg'
+            },
+            {
+                id: 'pokemonsnap',
+                title: 'Pokemon Snap',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/pokemon-snap',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMS8pWzyGONA7ZUbEfX2us05zljMVCd2621A&s'
+            },
+            {
+                id: 'southparkchef',
+                title: 'South Park Chefs Luv Shack',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/south-park-chefs-luv-shack',
+                img: 'https://m.media-amazon.com/images/I/41TmN1lsNCL._AC_UF1000,1000_QL80_.jpg'
+            },
+            {
+                id: 'southparkracer',
+                title: 'South Park Rally',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/south-park-rally-n64',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR0j-h7fjVuT5o8_N8GIAjEiBAwIW06vEjuEw&s'
+            },
+            {
+                id: 'madden02',
+                title: 'Madden NFL 2002',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/madden-nfl-2002-64',
+                img: 'https://upload.wikimedia.org/wikipedia/en/a/a0/Madden_NFL_2002_Coverart.png'
+            },
+            {
+                id: 'mk64',
+                title: 'Mario Kart 64',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/mario-kart-64',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQUvbxald06vO-avtya1O8H8ulw6soZDPYyZA&s'
+            },
+            {
+                id: 'zeldaocarina',
+                title: 'Ocarina Of Time (Zelda)',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/zelda-ocarina-of-time',
+                img: 'https://upload.wikimedia.org/wikipedia/en/5/57/The_Legend_of_Zelda_Ocarina_of_Time.jpg'
+            },
+            {
+                id: 'bomberman64',
+                title: 'Bomberman 64',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/bomberman-64',
+                img: 'https://upload.wikimedia.org/wikipedia/en/5/5f/Bomberman_64.jpg'
+            },
+            {
+                id: 'smash',
+                title: 'Super Smash Bros',
+                system: 'N64',
+                systemColor: 'bg-blue-700',
+                url: 'https://classicgamezone.com/games/super-smash-bros',
+                img: 'https://upload.wikimedia.org/wikipedia/en/4/42/Supersmashbox.jpg'
+            },
+            {
+                id: 'sonic1',
+                title: 'Sonic The Hedgehog',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/sonic-the-hedgehog',
+                img: 'https://upload.wikimedia.org/wikipedia/en/b/ba/Sonic_the_Hedgehog_1_Genesis_box_art.jpg'
+            },
+            {
+                id: 'streetsofrage',
+                title: 'Streets Of Rage',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/streets-of-rage',
+                img: 'https://upload.wikimedia.org/wikipedia/en/0/06/Streets_of_Rage_%28cover%29.jpg'
+            },
+            {
+                id: 'castleofillusion',
+                title: 'Castle of Illusion',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/castle-of-illusion-starring-mickey-mouse',
+                img: 'https://upload.wikimedia.org/wikipedia/en/f/f4/Castle_of_illusion_Mickey_mouse.jpg'
+            },
+            {
+                id: 'xmen',
+                title: 'X-Men',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/x-men-genesis',
+                img: 'https://m.media-amazon.com/images/I/71zS4xztxBL._AC_UF1000,1000_QL80_.jpg'
+            },
+            {
+                id: 'robotnik',
+                title: 'Dr Robotniks Mean Bean Machine',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/dr-robotniks-mean-bean-machine',
+                img: 'https://upload.wikimedia.org/wikipedia/en/c/c2/Sonic_Mean_Bean_Machine.jpg'
+            },
+            {
+                id: 'fixit',
+                title: 'Fix-It Felix Jr.',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/fix-it-felix-jr',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQWmF47Q3E5OZOkE0q_bckNZMUBfFqAuV06wQ&s'
+            },
+            {
+                id: 'goldaxe',
+                title: 'Golden Axe',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/golden-axe',
+                img: 'https://m.media-amazon.com/images/M/MV5BOTkxM2I1MTItYWI3YS00OTI5LTkwMjEtYWMxZTcyYjE3YjA5XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg'
+            },
+            {
+                id: 'secretmonkey',
+                title: 'Secret of Monkey Island',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/secret-of-monkey-island-segacd',
+                img: 'https://upload.wikimedia.org/wikipedia/en/a/a8/The_Secret_of_Monkey_Island_artwork.jpg'
+            },
+            {
+                id: 'jp',
+                title: 'Jurassic Park',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/jurassic-park-genesis',
+                img: 'https://upload.wikimedia.org/wikipedia/en/9/9c/Jurassic_Park_%28Amiga%29.jpg'
+            },
+            {
+                id: 'soniccd',
+                title: 'Sonic CD',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/sonic-cd',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTtuOC-E791jRgLs5Lara5bMWW3OQy4pMKVPg&s'
+            },
+            {
+                id: 'knuckles',
+                title: 'Sonic and Knuckles',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/sonic-and-knuckles',
+                img: 'https://upload.wikimedia.org/wikipedia/en/d/d3/Sonic_%26_Knuckles_cover.jpg'
+            },
+            {
+                id: 'crash1',
+                title: 'Crash Bandicoot',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/crash-bandicoot',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT1ZQ3hjkQlQJOuvy23jAUBpK9RWX0bz5G2zg&s'
+            },
+            {
+                id: 'crash2',
+                title: 'Crash Bandicoot 2',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/crash-bandicoot-2-cortex-strikes-back',
+                img: 'https://assets-prd.ignimgs.com/2022/02/08/crash2-sq-1644349587909.jpg'
+            },
+            {
+                id: 'crash3',
+                title: 'Crash Bandicoot 3',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/crash-bandicoot-3-warped',
+                img: 'https://upload.wikimedia.org/wikipedia/en/3/3e/Crash_Bandicoot_3_Warped_Original_Box_Art.jpg'
+            },
+            {
+                id: 'crashrace',
+                title: 'Crash Team Racing',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/crash-team-racing',
+                img: 'https://upload.wikimedia.org/wikipedia/en/4/4f/CrashTeamRacingNACover.png'
+            },
+            {
+                id: 'tonyhawk',
+                title: 'Tony Hawks Pro Skater',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/tony-hawk-pro-skater-ps',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR8fOrj6lth6vpxvenFjy1MteYGXrN5_Rc_NA&s'
+            },
+            {
+                id: 'finalfantasyvi',
+                title: 'Final Fantasy VI',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/final-fantasy-vii',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwDK8EtljIB_13C3OCwTiY_YNOCgMbU07frg&s'
+            },
+            {
+                id: 'diablo',
+                title: 'Diablo',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/diablo',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT4Z-0gli5yr5RHFJlAsO3NSyfhQTC9vfw8ww&s'
+            },
+            {
+                id: 'croc',
+                title: 'Croc: Legend of the Gobbos',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://pegasus-online.pl/en/ps1/croc-legend-of-the-gobbos',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRaGLHrbPg3otWN7giC9HssNMP58UzZttx5cIHzjoEDabYGr5DJb4miP-wxmAMWfAFYN6fUlg&s=10'
+            },
+            {
+                id: 'gex',
+                title: 'Gex',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://www.ps1fun.com/play/gex/779',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSvT0BfenOF9eIH_rTBvsPRH8nGdUs2by9V8g&s'
+            },
+            {
+                id: 'spacejam',
+                title: 'Space Jam',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/space-jam-ps',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDFntqm4rey9-ZZLJo9iCPHPHPXrzQe9Rhsg&s'
+            },
+            {
+                id: 'pepsi',
+                title: 'Pepsiman',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/pepsiman',
+                img: 'https://upload.wikimedia.org/wikipedia/en/4/49/Pepsiman_%28PS1%29_cover_art.jpg'
+            },
+            {
+                id: 'parappa',
+                title: 'PaRappa The Rapper',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/parappa-the-rapper',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTrVNbrRS-BtK1TdMQzTzGpY3lIWQMBLhwuOlMiozNPSrcvrvWMhnd01KMMCqEpixPOCEYYEmmGhO9LMAYBRAR5SG81b3QvnNg49Wdxow&s=10'
+            },
+            {
+                id: 'residentevil2',
+                title: 'Resident Evil 2',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/resident-evil-2-ps',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQyWnrz9afwIgtqT065OgrFmT_T9Mr4GhOcsA&s'
+            },
+            {
+                id: 'castlevaniasymphony',
+                title: 'Castlevania: Symphony of the Night',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/castlevania-symphony-of-the-night',
+                img: 'https://upload.wikimedia.org/wikipedia/en/thumb/c/cf/Castlevania_SOTN_PAL.jpg/250px-Castlevania_SOTN_PAL.jpg'
+            },
+            {
+                id: 'themehospital',
+                title: 'Theme Hospital',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/theme-hospital-ps',
+                img: 'https://upload.wikimedia.org/wikipedia/en/2/26/Theme_Hospital.front_cover.jpg'
+            },
+            {
+                id: 'themepark',
+                title: 'Theme Park',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/theme-park-ps',
+                img: 'https://upload.wikimedia.org/wikipedia/en/d/de/Theme_Park_cover.jpg'
+            },
+            {
+                id: 'apeescape',
+                title: 'Ape Escape',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/ape-escape',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT6hj3P03bDjXlvzB3tPTwiL_wJuQIZHcdivwjigM7fFgCUcPasBl_PQllzB3Ft2OdIPp5R9w&s=10'
+            },
+            {
+                id: 'tomba',
+                title: 'Tomba',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://www.ps1fun.com/play/tomba/718',
+                img: 'https://upload.wikimedia.org/wikipedia/en/7/75/Tomba%21_NTSC.png'
+            },
+            {
+                id: 'iq',
+                title: 'Intelligent Qube',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://www.ps1fun.com/intelligent-qube',
+                img: 'https://upload.wikimedia.org/wikipedia/en/9/98/Intelligent_Qube.jpg'
+            },
+            {
+                id: 'wildarms',
+                title: 'Wild Arms',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/wild-arms',
+                img: 'https://upload.wikimedia.org/wikipedia/en/4/49/Wildarmscase.jpg'
+            },
+            {
+                id: 'umjam',
+                title: 'Um Jammer Lammy',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://www.ps1fun.com/play/um-jammer-lammy/1711',
+                img: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/9d/UmJammer_Lammy_Coverart.png/250px-UmJammer_Lammy_Coverart.png'
+            },
+            {
+                id: 'finalfantasy7',
+                title: 'Final Fantasy VII',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/final-fantasy-vii',
+                img: 'https://upload.wikimedia.org/wikipedia/en/thumb/c/c2/Final_Fantasy_VII_Box_Art.jpg/250px-Final_Fantasy_VII_Box_Art.jpg'
+            },
+            {
+                id: 'finalfantasyix',
+                title: 'Final Fantasy IX',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/final-fantasy-ix',
+                img: 'https://m.media-amazon.com/images/I/71JTiHuCcAL.jpg'
+            },
+            {
+                id: 'tombraider',
+                title: 'Tomb Raider',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/tomb-raider',
+                img: 'https://upload.wikimedia.org/wikipedia/en/6/69/Tomb_Raider_%281996%29.png'
+            },
+            {
+                id: 'spyro',
+                title: 'Spyro The Dragon',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/spyro-the-dragon',
+                img: 'https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Spyro_the_Dragon.jpg/250px-Spyro_the_Dragon.jpg'
+            },
+            {
+                id: 'spyro2',
+                title: 'Spyro 2',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/spyro-2-riptos-rage',
+                img: 'https://upload.wikimedia.org/wikipedia/en/9/91/Spyro_2_-_Ripto%27s_Rage%21_Coverart.png'
+            },
+            {
+                id: 'spyro3',
+                title: 'Spyro 3',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/spyro-3-year-of-the-dragon',
+                img: 'https://upload.wikimedia.org/wikipedia/en/5/54/Spyro-year_of_the_dragon.png'
+            },
+            {
+                id: 'toystoryracing',
+                title: 'Toy Story Racing',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/toy-story-racer',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpSSFfW_WW0ninSPpX7br0YjeNuCFTOT37sA&s'
+            },
+            {
+                id: 'tekken',
+                title: 'Tekken',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/tekken',
+                img: 'https://upload.wikimedia.org/wikipedia/en/thumb/0/0e/Tekken_1_game_cover.jpg/250px-Tekken_1_game_cover.jpg'
+            },
+            {
+                id: 'gearsolid',
+                title: 'Metal Gear Solid',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/metal-gear-solid',
+                img: 'https://static.wikia.nocookie.net/metalgear/images/3/3c/SLUS-00594-F-ALL.jpg/revision/latest?cb=20200303161503'
+            },
+            {
+                id: 'gta',
+                title: 'Grand Theft Auto',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/grand-theft-auto',
+                img: 'https://upload.wikimedia.org/wikipedia/en/e/e7/GTA_-_Box_Front.jpg'
+            },
+            {
+                id: 'granturismo',
+                title: 'Gran Turismo',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/gran-turismo',
+                img: 'https://upload.wikimedia.org/wikipedia/en/c/c8/Gran_Turismo_-_Cover_-_JP.jpg'
+            },
+            {
+                id: 'nbajamextreme',
+                title: 'NBA Jam Extreme',
+                system: 'PLAYSTATION',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/nba-jam-extreme-ps',
+                img: 'https://upload.wikimedia.org/wikipedia/en/8/82/NBA_Jam_Extreme_cover.jpg'
+            },
+            {
+                id: 'sonic2',
+                title: 'Sonic The Hedgehog 2',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://playclassic.games/games/platform-sega-genesis-games-online/play-sonic-the-hedgehog-2-online/play/',
+                img: 'https://upload.wikimedia.org/wikipedia/en/0/0c/Sonic_2_US_Cover.jpg'
+            },
+            {
+                id: 'mortalkombat',
+                title: 'Mortal Kombat',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/mortal-kombat',
+                img: 'https://upload.wikimedia.org/wikipedia/en/3/33/Mortal_Kombat_cover.JPG'
+            },
+            {
+                id: 'megabomb',
+                title: 'Mega Bomberman',
+                system: 'SEGA',
+                systemColor: 'bg-slate-900 border border-slate-500',
+                url: 'https://classicgamezone.com/games/mega-bomberman',
+                img: 'https://upload.wikimedia.org/wikipedia/en/c/c7/Mega_Bomberman.jpg'
+            },
+            {
+                id: 'tetris',
+                title: 'Tetris',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://playclassic.games/games/puzzle-nes-games-online/play-tetris-online/play/',
+                img: 'https://upload.wikimedia.org/wikipedia/en/thumb/7/7d/Tetris_NES_cover_art.jpg/250px-Tetris_NES_cover_art.jpg'
+            },
+            {
+                id: 'tmnt',
+                title: 'Teenage Mutant Ninja Turtles',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/teenage-mutant-ninja-turtles',
+                img: 'https://upload.wikimedia.org/wikipedia/en/5/54/Teenage_Mutant_Ninja_Turtles_%281989_video_game%29.jpg'
+            },
+            {
+                id: 'excitebike',
+                title: 'Excitebike',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/excitebike',
+                img: 'https://m.media-amazon.com/images/I/61CItsIkhJL._AC_UF1000,1000_QL80_.jpg'
+            },
+            {
+                id: 'krusty',
+                title: 'Krustys Fun House',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/krustys-fun-house-nes',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSmwUaKO85LqWMPpdDilzwsf7WqKiIWFoVkfA&s'
+            },
+            {
+                id: 'castlevania',
+                title: 'Castlevania',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/castlevania',
+                img: 'https://upload.wikimedia.org/wikipedia/en/5/51/Castlevania_1_cover.png'
+            },
+            {
+                id: 'puyopuyo',
+                title: 'Puyo Puyo',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/puyo-puyo-nes',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRpPvbDudEgrh9nIpZb9MFDj1xYL5-lxNB3hg&s'
+            },
+            {
+                id: 'centipede',
+                title: 'Centipede',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://archive.org/embed/arcade_centiped',
+                img: 'https://upload.wikimedia.org/wikipedia/en/6/6b/Centipede-arcade-flyer.jpg'
+            },
+            {
+                id: 'pacman',
+                title: 'PAC-MAN',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/pac-man-midway',
+                img: 'https://static.wikia.nocookie.net/pacman/images/a/ac/Pacman-side-art-new.png/revision/latest?cb=20240716030029'
+            },
+            {
+                id: 'asteroids',
+                title: 'Asteroids',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/asteroids-arcade',
+                img: 'https://upload.wikimedia.org/wikipedia/en/8/81/Asteroids-arcadegame.jpg'
+            },
+            {
+                id: 'baseballstars2',
+                title: 'Baseball Stars 2',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/baseball-stars-2',
+                img: 'https://upload.wikimedia.org/wikipedia/en/4/4d/Baseball_Stars_2_arcade_flyer.jpg'
+            },
+            {
+                id: 'metalslug',
+                title: 'Metal Slug',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/mslug',
+                img: 'https://m.media-amazon.com/images/M/MV5BN2I0M2Y2ODQtMTM4Ni00ZTJiLWE1MmUtM2I1ZmFhYzk4NTEyXkEyXkFqcGc@._V1_.jpg'
+            },
+            {
+                id: 'missilecommand',
+                title: 'Missile Command',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/missile-command-arcade',
+                img: 'https://upload.wikimedia.org/wikipedia/en/c/c7/Missile_Command_flyer.jpg'
+            },
+            {
+                id: 'frogger',
+                title: 'Frogger',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/frogger-arcade',
+                img: 'https://assets-prd.ignimgs.com/2022/04/16/frogger-1650130380446.jpg'
+            },
+            {
+                id: 'outrun',
+                title: 'OutRun',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/out-run',
+                img: 'https://m.media-amazon.com/images/M/MV5BNWY4MGQ2YTEtZmQwMi00MzJkLTlkNjMtYTM1NTg3YmZiMmJkXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg'
+            },
+            {
+                id: 'puzzlebobble',
+                title: 'Puzzle Bobble',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/puzzle-bobble',
+                img: 'https://upload.wikimedia.org/wikipedia/en/0/0a/Puzzle_Bobble_arcade_flyer.jpg'
+            },
+            {
+                id: 'nbajamtournament',
+                title: 'NBA Jam Tournament Edition',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/nba-jam-tournament-edition-32x',
+                img: 'https://www.lukiegames.com/assets/images/SNES/snes_nba_jam_tournament_edition_p_78mnua.jpg'
+            },
+            {
+                id: 'nbajam',
+                title: 'NBA Jam',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/nba-jam-arcade',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT6M326Pb7nPhqAScgiPJUaIeI8tzMIu3XgAA&s'
+            },
+            {
+                id: 'megaman',
+                title: 'Mega Man',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://playclassic.games/games/platform-nes-games-online/mega-man/play',
+                img: 'https://upload.wikimedia.org/wikipedia/en/d/dd/Mega_Man_1_box_artwork.jpg'
+            },
+            {
+                id: 'superbowl',
+                title: 'Tecmo Super Bowl',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/tecmo-super-bowl',
+                img: 'https://upload.wikimedia.org/wikipedia/en/1/13/Tecmo_Super_Bowl.jpg'
+            },
+            {
+                id: 'ninjagaiden',
+                title: 'Ninja Gaiden',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/ninja-gaiden',
+                img: 'https://upload.wikimedia.org/wikipedia/en/9/9b/Ninja_Gaiden_%28NES%29.jpg'
+            },
+            {
+                id: 'arkanoid',
+                title: 'Arkanoid',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/arkanoid-nes',
+                img: 'https://upload.wikimedia.org/wikipedia/en/a/a9/Arkanoid_arcadeflyer.png'
+            },
+            {
+                id: 'kirbyadventure',
+                title: 'Kirbys Adventure',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/kirbys-adventure',
+                img: 'https://m.media-amazon.com/images/I/71y9Vr480XL.jpg'
+            },
+            {
+                id: 'rampage',
+                title: 'Rampage',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/rampage',
+                img: 'https://upload.wikimedia.org/wikipedia/en/5/5d/Rampage_flyer.png'
+            },
+            {
+                id: 'digdug',
+                title: 'Dig Dug',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/dig-dug',
+                img: 'https://mediaproxy.tvtropes.org/width/1200/https://static.tvtropes.org/pmwiki/pub/images/img_5801.jpeg'
+            },
+            {
+                id: 'karatechamp',
+                title: 'Karate Champ',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://classicgamezone.com/games/karate-champ',
+                img: 'https://upload.wikimedia.org/wikipedia/en/b/b7/Karate_Champ_flyer.png'
+            },
+            {
+                id: 'galaga88',
+                title: 'Galaga \'88',
+                system: 'ARCADE',
+                systemColor: 'bg-orange-600',
+                url: 'https://archive.org/embed/arcade_galaga88',
+                img: 'https://i.etsystatic.com/12076554/r/il/8e6945/1071338212/il_fullxfull.1071338212_m72j.jpg'
+            },
+            {
+                id: 'smk',
+                title: 'Super Mario Kart',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://playclassic.games/games/racing-snes-games-online/play-super-mario-kart-online/play/',
+                img: 'https://upload.wikimedia.org/wikipedia/en/3/38/Supermariokart_box.JPG'
+            },
+            {
+                id: 'eb',
+                title: 'EarthBound',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/mother-2-earthbound',
+                img: 'https://upload.wikimedia.org/wikipedia/en/1/1f/EarthBound_Box.jpg'
+            },
+            {
+                id: 'linktopast',
+                title: 'Link to the Past (Zelda)',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/zelda-link-to-the-past',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQtArxgE_kkBdzei7lwMrUGDtF8Qsbs0NatKg&s'
+            },
+            {
+                id: 'harvestmoon',
+                title: 'Harvest Moon',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/harvest-moon-snes',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQWjfnjnbeUOgQbaJWW7wfGtzqt5-r1YT_tiA&s'
+            },
+            {
+                id: 'superbomb',
+                title: 'Super Bomberman',
+                system: 'SNES',
+                systemColor: 'bg-purple-700',
+                url: 'https://classicgamezone.com/games/super-bomberman',
+                img: 'https://upload.wikimedia.org/wikipedia/en/7/7a/Super.Bomberman.Box.Art.SNES.PAL.png'
+            },
+            {
+                id: 'zelda',
+                title: 'Legend of Zelda',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://playclassic.games/games/action-nes-games-online/play-the-legend-of-zelda-online/play/',
+                img: 'https://upload.wikimedia.org/wikipedia/en/4/41/Legend_of_zelda_cover_%28with_cartridge%29_gold.png'
+            },
+            {
+                id: 'batman',
+                title: 'Batman',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/batman-the-video-game',
+                img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRmTyruAC3piuo0XUOggLLLOSLMdQvDcnP7eg&s'
+            },
+            {
+                id: 'qbert',
+                title: 'Q*bert',
+                system: 'NES',
+                systemColor: 'bg-red-700',
+                url: 'https://classicgamezone.com/games/qbert',
+                img: 'https://mediaproxy.tvtropes.org/width/1200/https://static.tvtropes.org/pmwiki/pub/images/img_5762.jpeg'
+            }
+        ];
+
+         const gameGrid = document.getElementById('game-grid');
+        
+         // Render Game Grid
+        function renderGames() {
+            // Get necessary elements inside the function to ensure they are found
+            const gameGrid = document.getElementById('game-grid');
+            const searchInput = document.getElementById('search-input');
+            const platformFilter = document.getElementById('platform-filter');
+            
+            // Extract current values
+            const searchQuery = searchInput ? searchInput.value.toLowerCase() : '';
+            const selectedPlatform = platformFilter ? platformFilter.value : 'ALL';
+
+            // Clear current grid
+            if (gameGrid) gameGrid.innerHTML = '';
+
+            // Filter games securely
+            const filteredGames = games.filter(game => {
+                const matchesPlatform = (selectedPlatform === 'ALL' || game.system === selectedPlatform);
+                const matchesSearch = game.title.toLowerCase().includes(searchQuery);
+                return matchesPlatform && matchesSearch;
+            });
+            
+            // Force pure alphabetical sorting
+            filteredGames.sort((a, b) => {
+                const titleA = a.title.toLowerCase();
+                const titleB = b.title.toLowerCase();
+                if (titleA < titleB) return -1;
+                if (titleA > titleB) return 1;
+                return 0;
+            });
+
+            // Handle empty state
+            if (filteredGames.length === 0) {
+                if (gameGrid) {
+                    gameGrid.innerHTML = '<div class="col-span-full text-center text-slate-500 py-10 font-sans">No games found matching your search criteria.</div>';
+                }
+                return;
+            }
+
+            // Inject the sorted games
+            filteredGames.forEach((game) => {
+                const card = document.createElement('div');
+                card.className = 'game-card rounded-lg overflow-hidden flex flex-col group h-72';
+                card.onclick = () => playGame(game);
+                
+                // Dynamic fallback image generator. Encode URI and replace single quotes to prevent breaking inline JS.
+                const fallbackText = encodeURIComponent(game.title).replace(/'/g, "%27");
+                const fallbackUrl = `https://placehold.co/400x300/1e293b/ffffff?text=${fallbackText}&font=Outfit`;
+
+                card.innerHTML = `
+                    <div class="relative w-full h-48 bg-black overflow-hidden flex-shrink-0 border-b border-slate-700">
+                        <img src="${game.img}" alt="${game.title}" class="w-full h-full object-cover object-top opacity-80 group-hover:opacity-100 transition-opacity" onerror="this.onerror=null; this.src='${fallbackUrl}'">
+                        
+                        <div class="play-overlay absolute inset-0 opacity-0 flex items-center justify-center transition-opacity duration-300">
+                            <div class="w-16 h-16 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-lg">
+                                <i class="fas fa-play text-2xl ml-1"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 flex-grow flex flex-col justify-between">
+                        <h3 class="font-sans font-bold text-white text-lg truncate" title="${game.title}">${game.title}</h3>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-xs font-bold text-white ${game.systemColor} px-2 py-1 rounded">${game.system}</span>
+                            <i class="fas fa-gamepad text-slate-500 group-hover:text-blue-400 transition-colors"></i>
+                        </div>
+                    </div>
+                `;
+                if (gameGrid) gameGrid.appendChild(card);
+            });
+        }
+        // Logic for Player View
+        const gridView = document.getElementById('game-grid');
+        const playerView = document.getElementById('player-view');
+        const iframe = document.getElementById('game-iframe');
+        const playingTitle = document.getElementById('now-playing-title');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const controlsText = document.getElementById('game-controls-text');
+
+        function playGame(game) {
+            // Update UI
+            playingTitle.innerText = `${game.title}`;
+            controlsText.innerText = systemControls[game.system] || 'Click inside game window to enable controls.';
+            
+            gridView.classList.add('hidden');
+            playerView.classList.remove('hidden');
+            playerView.classList.add('flex');
+            
+            // Set Loading state
+            loadingSpinner.style.display = 'flex';
+            
+            // Load Game
+            iframe.src = game.url;
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Analytics: Track the game played and IP Address
+            trackGamePlay(game.title);
+        }
+
+        // --- Analytics Tracking Function ---
+        function trackGamePlay(gameTitle) {
+            try {
+                // Setup Google Forms data
+                const formId = "1FAIpQLSe0znX_7v1Z9nRY7H6Scah5-vZfYNpACq6cBGRemQd4kNsA_g"; 
+                const gameEntryId = "entry.379280833"; // Replace with your Game Title entry ID
+
+                const formUrl = `https://docs.google.com/forms/d/e/${formId}/formResponse`;
+
+                const formData = new URLSearchParams();
+                formData.append(gameEntryId, gameTitle);
+
+                // Send the data silently in the background
+                fetch(formUrl, {
+                    method: 'POST',
+                    mode: 'no-cors', // Required to bypass browser security blocks for Google Forms
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: formData
+                }).then(() => {
+                    console.log(`Tracking sent for: ${gameTitle}`);
+                }).catch((error) => {
+                    console.error("Network error sending tracking data:", error);
+                });
+            } catch (error) {
+                console.error("Tracking setup error:", error);
+            }
+        }
+
+        function closeGame() {
+            if (isFullscreen) toggleFullscreen();
+            
+            // Stop game audio/processing by removing src
+            iframe.src = '';
+            
+            // Update UI
+            playerView.classList.add('hidden');
+            playerView.classList.remove('flex');
+            gridView.classList.remove('hidden');
+        }
+
+        let isFullscreen = false;
+
+        function toggleFullscreen() {
+            const playerViewElement = document.getElementById('player-view');
+            const fsIcon = document.getElementById('fs-icon');
+            const fsText = document.getElementById('fs-text');
+            const header = document.getElementById('site-header');
+            const footer = document.getElementById('site-footer');
+            
+            isFullscreen = !isFullscreen;
+            
+            if (isFullscreen) {
+                // Activate pseudo-fullscreen
+                playerViewElement.classList.add('css-fullscreen');
+                document.body.style.overflow = 'hidden'; // Stop background scrolling
+                
+                // Hide Header and Footer
+                header.style.display = 'none';
+                footer.style.display = 'none';
+
+                // Update Button UI
+                fsIcon.classList.remove('fa-expand');
+                fsIcon.classList.add('fa-compress');
+                fsText.innerText = 'EXIT FULLSCREEN';
+            } else {
+                // Deactivate pseudo-fullscreen
+                playerViewElement.classList.remove('css-fullscreen');
+                document.body.style.overflow = ''; // Restore scrolling
+                
+                // Show Header and Footer
+                header.style.display = 'block';
+                footer.style.display = 'block';
+
+                // Update Button UI
+                fsIcon.classList.remove('fa-compress');
+                fsIcon.classList.add('fa-expand');
+                fsText.innerText = 'FULLSCREEN';
+            }
+        }
+
+        // Changelog Logic
+        function openChangelog() {
+            document.getElementById('changelog-modal').classList.remove('hidden');
+        }
+
+        function closeChangelog() {
+            document.getElementById('changelog-modal').classList.add('hidden');
+        }
+
+        // Initialize application directly (safer than window.onload for iframes)
+        renderGames();
+        
+        // Setup search and filter listeners
+        const searchInputEl = document.getElementById('search-input');
+        const filterSelectEl = document.getElementById('platform-filter');
+        
+        if (searchInputEl) searchInputEl.addEventListener('input', renderGames);
+        if (filterSelectEl) filterSelectEl.addEventListener('change', renderGames);
+
+    </script>
+</body>
+</html>
